@@ -1,0 +1,158 @@
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local player = game.Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+
+local Window = WindUI:CreateWindow({
+    Title = "Be A Begger",
+    Icon = "geist:window",
+    Folder = "BeBegging_UI",
+    Size = UDim2.fromOffset(0,0),
+    Theme = "Dark"
+})
+
+local Sections = {
+    Misc = Window:Section({ Title = "Misc", Opened = true }),
+    Settings = Window:Section({ Title = "Settings", Opened = true })
+}
+
+local Tabs = {
+    MiscFeatures = Sections.Misc:Tab({ Title = "Misc Features", Icon = "zap" }),
+    Upgrades = Sections.Misc:Tab({ Title = "Upgrades", Icon = "arrow-up" }),
+    FarmMoney = Sections.Misc:Tab({ Title = "Farm Money", Icon = "dollar-sign" }),
+    Settings = Sections.Settings:Tab({ Title = "Settings", Icon = "settings" })
+}
+
+-- MISC FEATURES
+local MiscSection = Tabs.MiscFeatures:Section({ Title = "Player Options" })
+local fullBright = false
+MiscSection:Toggle({ Title = "FullBright", Value = false, Callback = function(state) fullBright = state end })
+
+local infJump = false
+MiscSection:Toggle({ Title = "Inf Jump", Value = false, Callback = function(state) infJump = state end })
+UserInputService.JumpRequest:Connect(function()
+    if infJump and player.Character then
+        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+local walkSpeedValue = 16
+MiscSection:Slider({ Title = "WalkSpeed", Value = { Min = 16, Max = 100, Default = 16 }, Callback = function(value) walkSpeedValue = value end })
+
+RunService.Heartbeat:Connect(function()
+    if fullBright then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+    end
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.WalkSpeed = walkSpeedValue
+    end
+end)
+
+player.CharacterAdded:Connect(function(char)
+    char:WaitForChild("Humanoid")
+    char.Humanoid.WalkSpeed = walkSpeedValue
+end)
+
+-- SETTINGS
+local SettingsSection = Tabs.Settings:Section({ Title = "UI Settings" })
+local themes = {"Dark", "Light", "Midnight"}
+SettingsSection:Dropdown({ Title = "Menu Theme", Values = themes, Value = "Dark", Callback = function(theme)
+    WindUI:SetTheme(theme)
+    WindUI:Notify({Title = "Theme Changed", Content = theme, Duration = 2})
+end })
+
+-- UPGRADES
+local UpgradesSection = Tabs.Upgrades:Section({ Title = "Auto Upgrade" })
+local selectedUpgrade = "Beg Power"
+local autoUpgrade = false
+local autoUpgradeAll = false
+local upgradeOptions = {"Beg Power", "Income", "Box Tier", "Alley Tier"}
+
+UpgradesSection:Toggle({ Title = "Auto Upgrade", Value = false, Callback = function(state) autoUpgrade = state end })
+UpgradesSection:Toggle({ Title = "Auto Upgrade All", Value = false, Callback = function(state) autoUpgradeAll = state end })
+UpgradesSection:Dropdown({ Title = "Select Upgrade", Values = upgradeOptions, Value = "Beg Power", Callback = function(option) selectedUpgrade = option end })
+
+RunService.Heartbeat:Connect(function()
+    if ReplicatedStorage:FindFirstChild("Remotes") then
+        local UpgradeRemote = ReplicatedStorage.Remotes:FindFirstChild("Upgrade")
+        if UpgradeRemote then
+            if autoUpgrade then UpgradeRemote:FireServer(selectedUpgrade) end
+            if autoUpgradeAll then
+                for _, upgrade in pairs(upgradeOptions) do
+                    UpgradeRemote:FireServer(upgrade)
+                end
+            end
+        end
+    end
+end)
+
+-- FARM MONEY
+local FarmSection = Tabs.FarmMoney:Section({ Title = "Money Options" })
+local instantPrompt = false
+local tpToMoney = false
+
+FarmSection:Toggle({ Title = "Instant Proximity Prompt", Value = false, Callback = function(state) instantPrompt = state end })
+FarmSection:Toggle({ Title = "TP To Money", Value = false, Callback = function(state) tpToMoney = state end })
+
+RunService.Heartbeat:Connect(function()
+    if instantPrompt then
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+                obj.HoldDuration = 0
+                obj:InputHoldBegin()
+            end
+        end
+    end
+    if tpToMoney then
+        local moneyList = Workspace:FindFirstChild("Money") and Workspace.Money:GetChildren() or {}
+        if #moneyList > 0 and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local target = moneyList[math.random(1, #moneyList)]
+            player.Character.HumanoidRootPart.CFrame = target.CFrame + Vector3.new(0,3,0)
+        end
+    end
+end)
+
+-- AUTO BEG
+local autoBeg = false
+local BegSection = Tabs.MiscFeatures:Section({ Title = "Auto Beg Options" })
+BegSection:Toggle({ Title = "Auto Beg from People", Value = false, Callback = function(state) autoBeg = state end })
+
+RunService.Heartbeat:Connect(function()
+    if autoBeg then
+        local rigs = Workspace:FindFirstChild("NPCs") and Workspace.NPCs:FindFirstChild("Rig") and {Workspace.NPCs.Rig} or {}
+        for _, npc in pairs(rigs) do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = npc.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
+            end
+        end
+    end
+end)
+
+-- AUTO MINI GAME
+local autoMiniGame = false
+local MiniGameSection = Tabs.MiscFeatures:Section({ Title = "Mini Game Options" })
+MiniGameSection:Toggle({ Title = "Auto Mini Game", Value = false, Callback = function(state) autoMiniGame = state end })
+
+RunService.Heartbeat:Connect(function()
+    if autoMiniGame and ReplicatedStorage:FindFirstChild("Remotes") then
+        local MiniGameRemote = ReplicatedStorage.Remotes:FindFirstChild("MinigameEvent")
+        if MiniGameRemote then
+            MiniGameRemote:FireServer(true)
+        end
+        local gui = player.PlayerGui:FindFirstChild("Main")
+        if gui and gui:FindFirstChild("Minigame") then
+            local mg = gui.Minigame
+            for _, btn in pairs(mg:GetChildren()) do
+                if btn:IsA("TextButton") and (btn.Name == "Green" or btn.Name == "Yellow" or btn.Name == "Red") then
+                    pcall(function() btn:Destroy() end)
+                end
+            end
+        end
+    end
+end)
